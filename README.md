@@ -156,3 +156,9 @@ pip install pandas numpy scikit-learn matplotlib seaborn xgboost lightgbm joblib
 ## 📄 License
 
 This project uses the [NYC Airbnb Open Data](https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data) dataset, available under the CC0 Public Domain license.
+---
+Author
+
+Robert Cicero Son
+Scrum Master · Process Engineer · Prompt Engineer · Data Analyst · AI/ML Practitioner · CSM · CSPO · AI-Empowered SAFe Agilist · Active DoD Secret Clearance
+
