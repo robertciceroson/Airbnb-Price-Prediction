@@ -34,6 +34,7 @@ Airbnb-Price-Prediction/
 ├── Airbnb_NYC_Price_Prediction_Report.pdf # Project report
 └── README.md                              # This file
 ```
+> `models/` is generated locally on first run and excluded from version control — no pre-trained files are included in this repository.
 
 ---
 
