@@ -32,6 +32,8 @@ Airbnb-Price-Prediction/
 ├── Airbnb_NYC_Price_Prediction.ipynb      # Main notebook — full ML pipeline
 ├── Airbnb_NYC_Price_Prediction.pdf        # Notebook exported as PDF
 ├── Airbnb_NYC_Price_Prediction_Report.pdf # Project report
+├── requirements.txt                       # All dependencies
+├── start.bat                              # One-click launcher for Windows
 └── README.md                              # This file
 ```
 > `models/` is generated locally on first run and excluded from version control — no pre-trained files are included in this repository.
@@ -111,26 +113,36 @@ Input a listing's details (location, room type, borough, availability, reviews) 
 
 ## 🚀 How to Run
 
-### Requirements
-```bash
-pip install pandas numpy scikit-learn matplotlib seaborn xgboost lightgbm joblib scipy
-```
+### Option A — One-Click Launch (Windows)
 
-### Steps
+Double-click `start.bat` in the project folder. It will:
+- Check Python is installed
+- Verify `AB_NYC_2019.csv` is present
+- Create a virtual environment automatically if one doesn't exist
+- Install all dependencies from `requirements.txt`
+- Launch Jupyter and open `Airbnb_NYC_Price_Prediction.ipynb` directly
+
+> **Note:** XGBoost and LightGBM may take a few minutes to install on first run.
+
+### Option B — Manual Launch
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/robertciceroson/Airbnb-Price-Prediction.git
    cd Airbnb-Price-Prediction
    ```
 
-2. Launch Jupyter:
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. Launch Jupyter:
    ```bash
    jupyter notebook Airbnb_NYC_Price_Prediction.ipynb
    ```
 
-3. Run all cells top to bottom (`Kernel → Restart & Run All`)
-
-> The notebook will auto-download the dataset if `AB_NYC_2019.csv` is not found in the working directory.
+4. Run all cells top to bottom (`Kernel → Restart & Run All`)
 
 ---
 
@@ -156,9 +168,10 @@ pip install pandas numpy scikit-learn matplotlib seaborn xgboost lightgbm joblib
 ## 📄 License
 
 This project uses the [NYC Airbnb Open Data](https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data) dataset, available under the CC0 Public Domain license.
+
 ---
+
 ## Author
 
 **Robert Cicero Son**
 Scrum Master · Process Engineer · Prompt Engineer · Data Analyst · AI/ML Practitioner · CSM · CSPO · AI-Empowered SAFe Agilist · Active DoD Secret Clearance
-
