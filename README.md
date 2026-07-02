@@ -9,7 +9,7 @@ An end-to-end machine learning pipeline that predicts nightly listing prices for
 | Field | Details |
 |---|---|
 | **Author** | Robert Cicero Son |
-| **Dataset** | NYC Airbnb Open Data 2019 (~49,000 listings, 16 features) |
+| **Dataset** | Current NYC Airbnb Open Data - June 2026 (source: Inside Airbnb) |
 | **Target Variable** | Nightly listing price (USD) |
 | **Best Model** | XGBoost |
 | **Best Test R²** | ~0.65 |
@@ -28,7 +28,7 @@ Build a regression model that accurately predicts the nightly price of an Airbnb
 ```
 Airbnb-Price-Prediction/
 │
-├── AB_NYC_2019.csv                        # Raw dataset (NYC Airbnb Open Data 2019)
+├── listings.csv                           # Raw dataset (NYC Airbnb Open Data 2026)
 ├── Airbnb_NYC_Price_Prediction.ipynb      # Main notebook — full ML pipeline
 ├── Airbnb_NYC_Price_Prediction.pdf        # Notebook exported as PDF
 ├── Airbnb_NYC_Price_Prediction_Report.pdf # Project report
@@ -109,6 +109,8 @@ Trained model, scaler, and feature names saved to `models/` using `joblib`:
 ### 10. Interactive Price Predictor
 Input a listing's details (location, room type, borough, availability, reviews) and get a predicted nightly price with a confidence range.
 
+**[▶ Live Demo — predict NYC Airbnb prices interactively](https://airbnb-price-prediction-a9hyny92wfihme4mnzkzte.streamlit.app/)**
+
 ---
 
 ## 🚀 How to Run
@@ -117,7 +119,7 @@ Input a listing's details (location, room type, borough, availability, reviews) 
 
 Double-click `start.bat` in the project folder. It will:
 - Check Python is installed
-- Verify `AB_NYC_2019.csv` is present
+- Verify `Current NYC Airbnb listings data -June 2026 (source: Inside Airbnb)` is present
 - Create a virtual environment automatically if one doesn't exist
 - Install all dependencies from `requirements.txt`
 - Launch Jupyter and open `Airbnb_NYC_Price_Prediction.ipynb` directly
