@@ -42,10 +42,14 @@ SEASON_LABEL = {
 # ── Load data, preprocess, train — cached for the session ────────────────────
 @st.cache_resource(show_spinner=False)
 def load_and_train():
-    df = pd.read_csv("AB_NYC_2019.csv")
+    df = pd.read_csv("listings.csv")
  
     # Preprocessing
-    df = df.drop(columns=["id", "name", "host_id", "host_name", "last_review"])
+    drop_cols = ["id", "name", "host_id", "host_profile_id", "host_name",
+                 "last_review", "number_of_reviews_ltm", "license"]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+    df = df.dropna(subset=["neighbourhood_group", "neighbourhood", "room_type"])
+    df["calculated_host_listings_count"] = df["calculated_host_listings_count"].fillna(1)
     df["reviews_per_month"] = df["reviews_per_month"].fillna(0)
     df = df[df["price"] > 0]
     price_cap = df["price"].quantile(0.995)
@@ -102,7 +106,7 @@ def load_and_train():
 st.title("🏙️ NYC Airbnb Price Predictor")
 st.markdown(
     "Enter your listing details and check-in date, then click **Predict Price** "
-    "to get an estimated nightly rate based on 49,000 NYC Airbnb listings (2019)."
+    "to get an estimated nightly rate based on current NYC Airbnb listings (June 2026)."
 )
 st.markdown("---")
  
@@ -258,7 +262,7 @@ if st.button("🔍 Predict Price", use_container_width=True):
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.caption(
-    f"XGBoost trained on 49K NYC Airbnb listings (2019) · "
+    f"XGBoost trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
     f"Test R² = {r2:.2f} · MAE = ${mae:.0f} · "
     f"Seasonal adjustments based on NYC tourism patterns · "
     f"[GitHub repo](https://github.com/robertciceroson/Airbnb-Price-Prediction)"
