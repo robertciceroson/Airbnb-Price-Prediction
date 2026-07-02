@@ -176,4 +176,4 @@ This project uses the [NYC Airbnb Open Data — June 2026](https://insideairbnb.
 ## Author
 
 **Robert Cicero Son**
-Scrum Master · Process Engineer · Prompt Engineer · Data Analyst · AI/ML Practitioner · CSM · CSPO · AI-Empowered SAFe Agilist · Active DoD Secret Clearance
+Technical Scrum Master · AI Business Analyst · Prompt Engineer · Data Analyst · AI/ML Practitioner · CSM · CSPO · AI-Empowered SAFe Agilist · Active DoD Secret Clearance
