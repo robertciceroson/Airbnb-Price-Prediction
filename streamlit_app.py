@@ -144,23 +144,43 @@ with col3:
 with col4:
     host_listings = st.slider("Host total listings", 1, 50, 1)
  
-# ── Date picker ───────────────────────────────────────────────────────────────
+# ── Date range picker ────────────────────────────────────────────────────────
 st.markdown("---")
-st.subheader("📅 Check-in Date")
-checkin_date = st.date_input(
-    "Select your check-in date",
-    value=datetime.date.today(),
+st.subheader("📅 Stay Dates")
+today = datetime.date.today()
+date_range = st.date_input(
+    "Select check-in and check-out dates",
+    value=(today, today + datetime.timedelta(days=minimum_nights)),
     min_value=datetime.date(2024, 1, 1),
     max_value=datetime.date(2027, 12, 31),
 )
+ 
+# Handle partial selection (user clicked only one date)
+if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+    checkin_date, checkout_date = date_range
+    num_nights = (checkout_date - checkin_date).days
+else:
+    checkin_date  = date_range if not isinstance(date_range, (list, tuple)) else date_range[0]
+    checkout_date = checkin_date + datetime.timedelta(days=minimum_nights)
+    num_nights    = minimum_nights
+ 
+num_nights = max(num_nights, 1)  # guard against same-day selection
+ 
 month = checkin_date.month
 seasonal_mult = SEASONAL[month]
 season_label  = SEASON_LABEL[month]
 adj_pct = (seasonal_mult - 1) * 100
 adj_str = f"+{adj_pct:.0f}%" if adj_pct >= 0 else f"{adj_pct:.0f}%"
+ 
+col_d1, col_d2, col_d3 = st.columns(3)
+col_d1.metric("Check-in",  checkin_date.strftime("%b %d, %Y"))
+col_d2.metric("Check-out", checkout_date.strftime("%b %d, %Y"))
+col_d3.metric("Nights",    num_nights)
+ 
 st.caption(
     f"{season_label} · Seasonal adjustment: **{adj_str}** "
-    f"({checkin_date.strftime('%B')} is {'peak' if seasonal_mult > 1.1 else 'shoulder' if seasonal_mult > 0.95 else 'off-season'} in NYC)"
+    f"({checkin_date.strftime('%B')} is "
+    f"{'peak' if seasonal_mult > 1.1 else 'shoulder' if seasonal_mult > 0.95 else 'off-season'} in NYC)"
 )
  
 st.markdown("---")
@@ -184,19 +204,25 @@ if st.button("🔍 Predict Price", use_container_width=True):
  
     base_pred     = float(model.predict(input_df)[0])
     adjusted_pred = base_pred * seasonal_mult
+    total_cost    = adjusted_pred * num_nights
  
     # Results
-    st.success(f"### Estimated nightly price: **${adjusted_pred:.0f}**")
+    st.success(
+        f"### Estimated nightly price: **${adjusted_pred:.0f}** · "
+        f"Total for {num_nights} night{'s' if num_nights != 1 else ''}: **${total_cost:,.0f}**"
+    )
  
-    col_a, col_b = st.columns(2)
+    col_a, col_b, col_c = st.columns(3)
     with col_a:
-        st.metric("Base model price", f"${base_pred:.0f}")
+        st.metric("Base nightly price", f"${base_pred:.0f}")
     with col_b:
         st.metric(
-            f"Seasonally adjusted ({checkin_date.strftime('%B')})",
+            f"Adjusted ({checkin_date.strftime('%B')})",
             f"${adjusted_pred:.0f}",
             delta=f"{adj_str} seasonal",
         )
+    with col_c:
+        st.metric(f"Total ({num_nights} nights)", f"${total_cost:,.0f}")
  
     # Neighbourhood median context
     median_price = neighbourhood_prices.get(neighbourhood, None)
