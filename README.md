@@ -1,6 +1,6 @@
 # 🏙️ Airbnb NYC Price Prediction
 
-An end-to-end machine learning pipeline that predicts nightly listing prices for Airbnb properties in New York City using the NYC Airbnb Open Data 2019 dataset.
+An end-to-end machine learning pipeline that predicts nightly listing prices for Airbnb properties in New York City using the NYC Airbnb Open Data 2026 dataset.
 
 ---
 
