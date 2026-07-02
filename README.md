@@ -169,7 +169,7 @@ Double-click `start.bat` in the project folder. It will:
 
 ## 📄 License
 
-This project uses the [NYC Airbnb Open Data](https://www.kaggle.com/datasets/dgomonov/new-york-city-airbnb-open-data) dataset, available under the CC0 Public Domain license.
+This project uses the [NYC Airbnb Open Data — June 2026](https://insideairbnb.com/get-the-data/) (source: Inside Airbnb), available under the CC BY 4.0 license.
 
 ---
 
