@@ -1,5 +1,5 @@
 streamlit==1.45.1
-xgboost
+xgboost==2.0.3
 scikit-learn
 pandas
 numpy
