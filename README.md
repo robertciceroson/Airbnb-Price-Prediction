@@ -28,12 +28,17 @@ Build a regression model that accurately predicts the nightly price of an Airbnb
 ```
 Airbnb-Price-Prediction/
 │
-├── listings.csv                           # Raw dataset (NYC Airbnb Open Data 2026)
+├── listings.csv                           # Primary dataset (NYC Airbnb Open Data — June 2026)
+├── AB_NYC_2019.csv                        # Legacy dataset (2019, retained for reference)
 ├── Airbnb_NYC_Price_Prediction.ipynb      # Main notebook — full ML pipeline
 ├── Airbnb_NYC_Price_Prediction.pdf        # Notebook exported as PDF
 ├── Airbnb_NYC_Price_Prediction_Report.pdf # Project report
-├── requirements.txt                       # All dependencies
-├── start.bat                              # One-click launcher for Windows
+├── streamlit_app.py                       # Streamlit app — interactive predictor + price heatmap
+├── requirements.txt                       # All dependencies (pinned for Streamlit Cloud)
+├── .python-version                        # Pins Python 3.10 for Streamlit Cloud (uv resolver)
+├── runtime.txt                            # Runtime hint (legacy; superseded by .python-version)
+├── .gitignore                             # Excludes model artifacts and environment files
+├── start.bat                              # One-click launcher for Windows (Jupyter)
 └── README.md                              # This file
 ```
 > `models/` is generated locally on first run and excluded from version control — no pre-trained files are included in this repository.
