@@ -5,3 +5,4 @@ pandas
 numpy
 matplotlib
 plotly==5.24.1
+numpy==1.26.4
