@@ -62,6 +62,7 @@ Airbnb-Price-Prediction/
 
 ### 5. Feature Engineering
 New features created from existing data:
+
 | Feature | Description |
 |---|---|
 | `log_price` | Log-transformed target (reduces skewness) |
@@ -111,6 +112,17 @@ Input a listing's details (location, room type, borough, availability, reviews) 
 
 **[▶ Live Demo — predict NYC Airbnb prices interactively](https://airbnb-price-prediction-a9hyny92wfihme4mnzkzte.streamlit.app/)**
 
+### 11. NYC Price Heatmap
+An interactive map of New York City visualizing the model's learned pricing logic geographically. Each neighbourhood is represented as a color-coded dot — green for lower median prices, red for higher — with dot size proportional to the number of listings in that area.
+
+Key features:
+- **Borough filter** — isolate Bronx, Brooklyn, Manhattan, Queens, or Staten Island
+- **Hover tooltips** — neighbourhood name, borough, median price, and listing count on hover
+- **Summary tables** — 10 most affordable and 10 most expensive neighbourhoods ranked side by side
+- Built with Plotly `scatter_mapbox` on a `carto-positron` basemap (no API key required)
+
+**[▶ Live Demo — explore NYC price map](https://airbnb-price-prediction-a9hyny92wfihme4mnzkzte.streamlit.app/)**
+
 ---
 
 ## 🚀 How to Run
@@ -155,6 +167,7 @@ Double-click `start.bat` in the project folder. It will:
 - **Location** (latitude/longitude) and the neighbourhood target encoding are among the top 5 predictive features
 - Log-transforming the target variable reduces skewness from ~20 to ~0.3, significantly improving linear model performance
 - Tree-based ensemble methods (XGBoost, LightGBM, Random Forest) substantially outperform linear models on this dataset
+- **Price heatmap** confirms the model's geographic pricing logic: Tribeca ($486/night), Greenwich Village ($445/night), and SoHo ($429/night) lead Manhattan; outer-borough neighbourhoods such as Highbridge and Coney Island cluster under $70/night
 
 ---
 
@@ -164,6 +177,7 @@ Double-click `start.bat` in the project folder. It will:
 - **RobustScaler** used for linear models (more resistant to outliers than StandardScaler)
 - **Residual analysis** confirms approximately unbiased predictions across the price range
 - **Input validation** in the interactive predictor guards against out-of-range values
+- **Interactive price heatmap** built with Plotly `scatter_mapbox` — aggregates ~49K listings to neighbourhood-level medians for clean geographic visualization of the model's pricing signal
 
 ---
 
@@ -175,5 +189,5 @@ This project uses the [NYC Airbnb Open Data — June 2026](https://insideairbnb.
 
 ## Author
 
-**Robert Cicero Son**
-Technical Scrum Master · AI Business Analyst · Prompt Engineer · Data Analyst · AI/ML Practitioner · CSM · CSPO · AI-Empowered SAFe Agilist · Active DoD Secret Clearance
+**Robert Cicero Son**  
+AI Business Analyst · Scrum Master · Process Engineer · Prompt Engineer · Data Analyst · AI/ML Practitioner · CSM · CSPO · AI-Empowered SAFe Agilist · Active DoD Secret Clearance
