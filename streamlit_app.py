@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import lightgbm as lgb
 import plotly.express as px
 import datetime
 
@@ -26,15 +25,7 @@ SEASON_LABEL = {
     11: "❄️ Off-season", 12: "🎄 Holiday",
 }
 
-FEATURES = [
-    "borough_enc", "neighbourhood_enc", "room_enc",
-    "latitude", "longitude",
-    "minimum_nights", "number_of_reviews",
-    "reviews_per_month", "calculated_host_listings_count",
-    "availability_365",
-]
-
-# ── Load data + train model (cached — only runs once per server session) ──────
+# ── Load data (cached — only runs once per server session) ────────────────────
 @st.cache_resource(show_spinner=False)
 def load_all():
     df = pd.read_csv("listings.csv")
@@ -47,31 +38,15 @@ def load_all():
     df = df[df["price"] > 0]
     df = df[df["price"] <= df["price"].quantile(0.995)]
 
-    # Encoding maps (deterministic sort — matches prediction encoding)
-    borough_map       = {v: i for i, v in enumerate(sorted(df["neighbourhood_group"].unique()))}
-    neighbourhood_map = {v: i for i, v in enumerate(sorted(df["neighbourhood"].unique()))}
-    room_map          = {v: i for i, v in enumerate(sorted(df["room_type"].unique()))}
-
-    df["borough_enc"]       = df["neighbourhood_group"].map(borough_map)
-    df["neighbourhood_enc"] = df["neighbourhood"].map(neighbourhood_map)
-    df["room_enc"]          = df["room_type"].map(room_map)
-
     neighbourhood_coords = df.groupby("neighbourhood")[["latitude", "longitude"]].mean()
     neighbourhood_prices = df.groupby("neighbourhood")["price"].median().round(0)
 
-    # Train GBR directly from data — avoids pickle/numpy version issues
-    df_train = df.dropna(subset=FEATURES)
-    X = df_train[FEATURES].values.astype(np.float32)
-    y = df_train["price"].values.astype(np.float32)
-    model = lgb.LGBMRegressor(
-        n_estimators=100, max_depth=4, learning_rate=0.1,
-        subsample=0.8, random_state=42, n_jobs=1, verbose=-1
-    )
-    model.fit(X, y)
+    # Market median by (neighbourhood, room_type) — no ML library needed
+    neigh_room_median = df.groupby(["neighbourhood", "room_type"])["price"].median()
+    global_median = float(df["price"].median())
 
     return (
-        model,
-        borough_map, neighbourhood_map, room_map,
+        neigh_room_median, global_median,
         df, neighbourhood_coords, neighbourhood_prices,
     )
 
@@ -111,10 +86,9 @@ st.markdown("""
 st.markdown("<h1 style='text-align: center;'>🏙️ NYC Airbnb Price Predictor</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #555;'>Enter your listing details and check-in date, then click <strong>Predict Price</strong> to get an estimated nightly rate based on current NYC Airbnb listings (June 2026).</p>", unsafe_allow_html=True)
 
-with st.spinner("Loading model — first visit trains on ~21K listings, ~20s…"):
+with st.spinner("Loading data…"):
     (
-        model,
-        borough_map, neighbourhood_map, room_map,
+        neigh_room_median, global_median,
         df, neighbourhood_coords, neighbourhood_prices,
     ) = load_all()
 
@@ -180,19 +154,11 @@ with col3:
     predict = st.button("🔍 Predict Price", use_container_width=True)
 
 if predict:
-    coords = neighbourhood_coords.loc[neighbourhood]
-    lat, lng = float(coords["latitude"]), float(coords["longitude"])
-
-    row = np.array([[
-        float(borough_map.get(borough, 0)),
-        float(neighbourhood_map.get(neighbourhood, 0)),
-        float(room_map.get(room_type, 0)),
-        lat, lng,
-        float(minimum_nights), float(number_of_reviews),
-        float(reviews_per_month), float(host_listings), float(availability),
-    ]], dtype=np.float32)
-
-    base_pred     = float(model.predict(row)[0])
+    # Market median lookup — no ML library needed
+    base_pred = float(neigh_room_median.get(
+        (neighbourhood, room_type),
+        neighbourhood_prices.get(neighbourhood, global_median)
+    ))
     adjusted_pred = base_pred * seasonal_mult
     total_cost    = adjusted_pred * num_nights
 
@@ -309,8 +275,8 @@ else:
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "LightGBM model trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
-    "Served via LightGBM · "
+    "Market median pricing model — NYC Airbnb listings (June 2026 — Inside Airbnb) · "
+    "Median nightly price by neighbourhood & room type · "
     "Seasonal adjustments based on NYC tourism patterns · "
     "[GitHub repo](https://github.com/robertciceroson/Airbnb-Price-Prediction)"
 )
