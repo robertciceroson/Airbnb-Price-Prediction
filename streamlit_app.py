@@ -52,6 +52,8 @@ with col5:
 
 nights = max(1, (checkout - checkin).days)
 
+st.button("Predict Price", type="primary")
+
 base_price = neigh_room_median.get((neighbourhood, room_type), neighbourhood_prices.get(neighbourhood, global_median))
 month = checkin.month
 seasonal_mult = SEASONAL[month]
