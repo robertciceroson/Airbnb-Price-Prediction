@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import onnxruntime as rt
+import joblib
 import plotly.express as px
 import datetime
 
@@ -55,13 +55,11 @@ def load_all():
     neighbourhood_coords = df.groupby("neighbourhood")[["latitude", "longitude"]].mean()
     neighbourhood_prices = df.groupby("neighbourhood")["price"].median().round(0)
 
-    # Load pre-trained ONNX model (no xgboost / scipy / CUDA needed)
-    sess = rt.InferenceSession("model.onnx", providers=["CPUExecutionProvider"])
-    input_name  = sess.get_inputs()[0].name
-    output_name = sess.get_outputs()[0].name
+    # Load pre-trained sklearn model (GradientBoostingRegressor, no xgboost / CUDA needed)
+    model = joblib.load("model.pkl")
 
     return (
-        sess, input_name, output_name,
+        model,
         borough_map, neighbourhood_map, room_map,
         df, neighbourhood_coords, neighbourhood_prices,
     )
@@ -104,7 +102,7 @@ st.markdown("<p style='text-align: center; color: #555;'>Enter your listing deta
 
 with st.spinner("Loading model…"):
     (
-        sess, input_name, output_name,
+        model,
         borough_map, neighbourhood_map, room_map,
         df, neighbourhood_coords, neighbourhood_prices,
     ) = load_all()
@@ -183,7 +181,7 @@ if predict:
         float(reviews_per_month), float(host_listings), float(availability),
     ]], dtype=np.float32)
 
-    base_pred     = float(sess.run([output_name], {input_name: row})[0].flat[0])
+    base_pred     = float(model.predict(row)[0])
     adjusted_pred = base_pred * seasonal_mult
     total_cost    = adjusted_pred * num_nights
 
@@ -300,8 +298,8 @@ else:
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "XGBoost model trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
-    "Served via ONNX Runtime · "
+    "GradientBoosting model trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
+    "Served via scikit-learn · "
     "Seasonal adjustments based on NYC tourism patterns · "
     "[GitHub repo](https://github.com/robertciceroson/Airbnb-Price-Prediction)"
 )
