@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import xgboost as xgb
+import onnxruntime as rt
 import plotly.express as px
 import datetime
 
@@ -26,19 +26,6 @@ SEASON_LABEL = {
     11: "❄️ Off-season", 12: "🎄 Holiday",
 }
 
-FEATURE_LABELS = {
-    "borough_enc":                      "Borough",
-    "neighbourhood_enc":                "Neighbourhood",
-    "room_enc":                         "Room type",
-    "latitude":                         "Latitude",
-    "longitude":                        "Longitude",
-    "minimum_nights":                   "Min nights",
-    "number_of_reviews":                "# Reviews",
-    "reviews_per_month":                "Reviews/month",
-    "calculated_host_listings_count":   "Host listings",
-    "availability_365":                 "Availability",
-}
-
 FEATURES = [
     "borough_enc", "neighbourhood_enc", "room_enc",
     "latitude", "longitude",
@@ -47,18 +34,9 @@ FEATURES = [
     "availability_365",
 ]
 
-# ── Pure-numpy helpers (no sklearn) ───────────────────────────────────────────
-def r2(y_true, y_pred):
-    ss_res = np.sum((y_true - y_pred) ** 2)
-    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
-    return float(1 - ss_res / ss_tot)
-
-def mae(y_true, y_pred):
-    return float(np.mean(np.abs(y_true - y_pred)))
-
-# ── Load data, preprocess, train — cached for the session ────────────────────
+# ── Load data + model — no training ──────────────────────────────────────────
 @st.cache_resource(show_spinner=False)
-def load_and_train():
+def load_all():
     df = pd.read_csv("listings.csv")
     drop_cols = ["id", "name", "host_id", "host_profile_id", "host_name",
                  "last_review", "number_of_reviews_ltm", "license"]
@@ -68,54 +46,27 @@ def load_and_train():
     df["reviews_per_month"] = df["reviews_per_month"].fillna(0)
     df = df[df["price"] > 0]
     df = df[df["price"] <= df["price"].quantile(0.995)]
-    df = df[df["minimum_nights"] <= df["minimum_nights"].quantile(0.99)]
 
-    # Dict-based label encoding (no sklearn)
+    # Encoding maps (must match training order)
     borough_map       = {v: i for i, v in enumerate(sorted(df["neighbourhood_group"].unique()))}
     neighbourhood_map = {v: i for i, v in enumerate(sorted(df["neighbourhood"].unique()))}
     room_map          = {v: i for i, v in enumerate(sorted(df["room_type"].unique()))}
 
-    df["borough_enc"]       = df["neighbourhood_group"].map(borough_map)
-    df["neighbourhood_enc"] = df["neighbourhood"].map(neighbourhood_map)
-    df["room_enc"]          = df["room_type"].map(room_map)
-
     neighbourhood_coords = df.groupby("neighbourhood")[["latitude", "longitude"]].mean()
     neighbourhood_prices = df.groupby("neighbourhood")["price"].median().round(0)
 
-    X = df[FEATURES].values.astype(np.float32)
-    y = df["price"].values.astype(np.float32)
-
-    # Train/test split — pure numpy, no sklearn
-    np.random.seed(42)
-    idx = np.random.permutation(len(X))
-    split = int(len(X) * 0.80)
-    train_idx, test_idx = idx[:split], idx[split:]
-    X_train, X_test = X[train_idx], X[test_idx]
-    y_train, y_test = y[train_idx], y[test_idx]
-
-    # Native XGBoost API — no sklearn dependency
-    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=FEATURES)
-    dtest  = xgb.DMatrix(X_test,  label=y_test,  feature_names=FEATURES)
-
-    params = {
-        "objective":        "reg:squarederror",
-        "max_depth":        4,
-        "learning_rate":    0.1,
-        "subsample":        0.8,
-        "colsample_bytree": 0.8,
-        "seed":             42,
-        "nthread":          1,
-    }
-    model  = xgb.train(params, dtrain, num_boost_round=100)
-    y_pred = model.predict(dtest)
+    # Load pre-trained ONNX model (no xgboost / scipy / CUDA needed)
+    sess = rt.InferenceSession("model.onnx", providers=["CPUExecutionProvider"])
+    input_name  = sess.get_inputs()[0].name
+    output_name = sess.get_outputs()[0].name
 
     return (
-        model, borough_map, neighbourhood_map, room_map,
+        sess, input_name, output_name,
+        borough_map, neighbourhood_map, room_map,
         df, neighbourhood_coords, neighbourhood_prices,
-        r2(y_test, y_pred), mae(y_test, y_pred),
     )
 
-# ── Compact CSS ───────────────────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
     .block-container { padding-top: 1.2rem; padding-bottom: 0.5rem; max-width: 1200px; }
@@ -153,10 +104,10 @@ st.markdown("<p style='text-align: center; color: #555;'>Enter your listing deta
 
 with st.spinner("Loading model…"):
     (
-        model, borough_map, neighbourhood_map, room_map,
+        sess, input_name, output_name,
+        borough_map, neighbourhood_map, room_map,
         df, neighbourhood_coords, neighbourhood_prices,
-        r2_val, mae_val,
-    ) = load_and_train()
+    ) = load_all()
 
 st.divider()
 
@@ -221,19 +172,18 @@ with col3:
 
 if predict:
     coords = neighbourhood_coords.loc[neighbourhood]
-    lat, lng = coords["latitude"], coords["longitude"]
+    lat, lng = float(coords["latitude"]), float(coords["longitude"])
 
     row = np.array([[
         float(borough_map.get(borough, 0)),
         float(neighbourhood_map.get(neighbourhood, 0)),
         float(room_map.get(room_type, 0)),
-        float(lat), float(lng),
+        lat, lng,
         float(minimum_nights), float(number_of_reviews),
         float(reviews_per_month), float(host_listings), float(availability),
     ]], dtype=np.float32)
 
-    dinput    = xgb.DMatrix(row, feature_names=FEATURES)
-    base_pred = float(model.predict(dinput)[0])
+    base_pred     = float(sess.run([output_name], {input_name: row})[0][0])
     adjusted_pred = base_pred * seasonal_mult
     total_cost    = adjusted_pred * num_nights
 
@@ -263,22 +213,6 @@ if predict:
             f"📍 Median price in **{neighbourhood}**: **${median_price:.0f}/night** — "
             f"your estimate is **${abs(diff):.0f} {direction}** the neighbourhood median."
         )
-
-    with st.expander("📊 What drives the prediction?"):
-        importance_dict = model.get_score(importance_type="gain")
-        feat_names  = [FEATURE_LABELS.get(k, k) for k in importance_dict]
-        feat_scores = list(importance_dict.values())
-        sorted_pairs = sorted(zip(feat_scores, feat_names))
-        fig_imp = px.bar(
-            x=[p[0] for p in sorted_pairs],
-            y=[p[1] for p in sorted_pairs],
-            orientation="h",
-            labels={"x": "Feature importance (gain)", "y": ""},
-            title="XGBoost feature importances",
-            color_discrete_sequence=["#2E75B6"],
-        )
-        fig_imp.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
-        st.plotly_chart(fig_imp, use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 2 — Price Map
@@ -314,38 +248,24 @@ if filtered.empty:
 else:
     fig_map = px.scatter_mapbox(
         filtered,
-        lat="lat",
-        lon="lon",
+        lat="lat", lon="lon",
         color="median_price",
         size="listing_count",
         size_max=28,
         color_continuous_scale="RdYlGn_r",
         hover_name="neighbourhood",
         hover_data={
-            "borough":       True,
-            "price_label":   True,
-            "listing_count": True,
-            "median_price":  False,
-            "lat":           False,
-            "lon":           False,
+            "borough": True, "price_label": True, "listing_count": True,
+            "median_price": False, "lat": False, "lon": False,
         },
-        labels={
-            "borough":       "Borough",
-            "price_label":   "Median price",
-            "listing_count": "# Listings",
-        },
+        labels={"borough": "Borough", "price_label": "Median price", "listing_count": "# Listings"},
         mapbox_style="carto-positron",
         zoom=10,
         center={"lat": 40.7128, "lon": -74.0060},
         height=560,
     )
     fig_map.update_layout(
-        coloraxis_colorbar=dict(
-            title="Median<br>price ($)",
-            tickprefix="$",
-            thickness=14,
-            len=0.6,
-        ),
+        coloraxis_colorbar=dict(title="Median<br>price ($)", tickprefix="$", thickness=14, len=0.6),
         margin=dict(l=0, r=0, t=0, b=0),
     )
     st.plotly_chart(fig_map, use_container_width=True)
@@ -380,8 +300,8 @@ else:
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    f"XGBoost trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
-    f"Test R² = {r2_val:.2f} · MAE = ${mae_val:.0f} · "
-    f"Seasonal adjustments based on NYC tourism patterns · "
-    f"[GitHub repo](https://github.com/robertciceroson/Airbnb-Price-Prediction)"
+    "XGBoost model trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
+    "Served via ONNX Runtime · "
+    "Seasonal adjustments based on NYC tourism patterns · "
+    "[GitHub repo](https://github.com/robertciceroson/Airbnb-Price-Prediction)"
 )
