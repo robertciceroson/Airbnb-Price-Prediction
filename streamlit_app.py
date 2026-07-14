@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from xgboost import XGBRegressor
+import xgboost as xgb
 import plotly.express as px
 import datetime
 
@@ -26,7 +26,28 @@ SEASON_LABEL = {
     11: "❄️ Off-season", 12: "🎄 Holiday",
 }
 
-# ── Pure-numpy helpers (replaces sklearn) ─────────────────────────────────────
+FEATURE_LABELS = {
+    "borough_enc":                      "Borough",
+    "neighbourhood_enc":                "Neighbourhood",
+    "room_enc":                         "Room type",
+    "latitude":                         "Latitude",
+    "longitude":                        "Longitude",
+    "minimum_nights":                   "Min nights",
+    "number_of_reviews":                "# Reviews",
+    "reviews_per_month":                "Reviews/month",
+    "calculated_host_listings_count":   "Host listings",
+    "availability_365":                 "Availability",
+}
+
+FEATURES = [
+    "borough_enc", "neighbourhood_enc", "room_enc",
+    "latitude", "longitude",
+    "minimum_nights", "number_of_reviews",
+    "reviews_per_month", "calculated_host_listings_count",
+    "availability_365",
+]
+
+# ── Pure-numpy helpers (no sklearn) ───────────────────────────────────────────
 def r2(y_true, y_pred):
     ss_res = np.sum((y_true - y_pred) ** 2)
     ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
@@ -61,17 +82,10 @@ def load_and_train():
     neighbourhood_coords = df.groupby("neighbourhood")[["latitude", "longitude"]].mean()
     neighbourhood_prices = df.groupby("neighbourhood")["price"].median().round(0)
 
-    FEATURES = [
-        "borough_enc", "neighbourhood_enc", "room_enc",
-        "latitude", "longitude",
-        "minimum_nights", "number_of_reviews",
-        "reviews_per_month", "calculated_host_listings_count",
-        "availability_365",
-    ]
-    X = df[FEATURES].values
-    y = df["price"].values
+    X = df[FEATURES].values.astype(np.float32)
+    y = df["price"].values.astype(np.float32)
 
-    # Train/test split (no sklearn)
+    # Train/test split — pure numpy, no sklearn
     np.random.seed(42)
     idx = np.random.permutation(len(X))
     split = int(len(X) * 0.80)
@@ -79,17 +93,26 @@ def load_and_train():
     X_train, X_test = X[train_idx], X[test_idx]
     y_train, y_test = y[train_idx], y[test_idx]
 
-    model = XGBRegressor(
-        n_estimators=100, max_depth=4, learning_rate=0.1,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=1,
-    )
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    # Native XGBoost API — no sklearn dependency
+    dtrain = xgb.DMatrix(X_train, label=y_train, feature_names=FEATURES)
+    dtest  = xgb.DMatrix(X_test,  label=y_test,  feature_names=FEATURES)
+
+    params = {
+        "objective":        "reg:squarederror",
+        "max_depth":        4,
+        "learning_rate":    0.1,
+        "subsample":        0.8,
+        "colsample_bytree": 0.8,
+        "seed":             42,
+        "nthread":          1,
+    }
+    model  = xgb.train(params, dtrain, num_boost_round=100)
+    y_pred = model.predict(dtest)
 
     return (
         model, borough_map, neighbourhood_map, room_map,
         df, neighbourhood_coords, neighbourhood_prices,
-        FEATURES, r2(y_test, y_pred), mae(y_test, y_pred),
+        r2(y_test, y_pred), mae(y_test, y_pred),
     )
 
 # ── Compact CSS ───────────────────────────────────────────────────────────────
@@ -132,7 +155,7 @@ with st.spinner("Loading model…"):
     (
         model, borough_map, neighbourhood_map, room_map,
         df, neighbourhood_coords, neighbourhood_prices,
-        FEATURES, r2_val, mae_val,
+        r2_val, mae_val,
     ) = load_and_train()
 
 st.divider()
@@ -200,16 +223,17 @@ if predict:
     coords = neighbourhood_coords.loc[neighbourhood]
     lat, lng = coords["latitude"], coords["longitude"]
 
-    input_df = pd.DataFrame(
-        [[int(borough_map.get(borough, 0)),
-          int(neighbourhood_map.get(neighbourhood, 0)),
-          int(room_map.get(room_type, 0)),
-          lat, lng, minimum_nights, number_of_reviews,
-          reviews_per_month, host_listings, availability]],
-        columns=FEATURES,
-    )
+    row = np.array([[
+        float(borough_map.get(borough, 0)),
+        float(neighbourhood_map.get(neighbourhood, 0)),
+        float(room_map.get(room_type, 0)),
+        float(lat), float(lng),
+        float(minimum_nights), float(number_of_reviews),
+        float(reviews_per_month), float(host_listings), float(availability),
+    ]], dtype=np.float32)
 
-    base_pred     = float(model.predict(input_df)[0])
+    dinput    = xgb.DMatrix(row, feature_names=FEATURES)
+    base_pred = float(model.predict(dinput)[0])
     adjusted_pred = base_pred * seasonal_mult
     total_cost    = adjusted_pred * num_nights
 
@@ -241,16 +265,16 @@ if predict:
         )
 
     with st.expander("📊 What drives the prediction?"):
-        importance = model.feature_importances_
-        labels     = ["Borough", "Neighbourhood", "Room type", "Latitude", "Longitude",
-                      "Min nights", "# Reviews", "Reviews/month", "Host listings", "Availability"]
-        sorted_idx = np.argsort(importance)
+        importance_dict = model.get_score(importance_type="gain")
+        feat_names  = [FEATURE_LABELS.get(k, k) for k in importance_dict]
+        feat_scores = list(importance_dict.values())
+        sorted_pairs = sorted(zip(feat_scores, feat_names))
         fig_imp = px.bar(
-            x=importance[sorted_idx],
-            y=[labels[i] for i in sorted_idx],
-            orientation='h',
-            labels={'x': 'Feature importance', 'y': ''},
-            title='XGBoost feature importances',
+            x=[p[0] for p in sorted_pairs],
+            y=[p[1] for p in sorted_pairs],
+            orientation="h",
+            labels={"x": "Feature importance (gain)", "y": ""},
+            title="XGBoost feature importances",
             color_discrete_sequence=["#2E75B6"],
         )
         fig_imp.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
