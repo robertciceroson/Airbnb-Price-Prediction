@@ -5,7 +5,6 @@ from xgboost import XGBRegressor
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error
-import matplotlib.pyplot as plt
 import plotly.express as px
 import datetime
  
@@ -226,6 +225,7 @@ if predict:
         )
  
     with st.expander("📊 What drives the prediction?"):
+        import matplotlib.pyplot as plt 
         importance = model.feature_importances_
         labels     = ["Borough", "Neighbourhood", "Room type", "Latitude", "Longitude",
                       "Min nights", "# Reviews", "Reviews/month", "Host listings", "Availability"]
