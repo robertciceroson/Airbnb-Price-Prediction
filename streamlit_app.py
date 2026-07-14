@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import joblib
+from sklearn.ensemble import GradientBoostingRegressor
 import plotly.express as px
 import datetime
 
@@ -34,7 +34,7 @@ FEATURES = [
     "availability_365",
 ]
 
-# ── Load data + model — no training ──────────────────────────────────────────
+# ── Load data + train model (cached — only runs once per server session) ──────
 @st.cache_resource(show_spinner=False)
 def load_all():
     df = pd.read_csv("listings.csv")
@@ -47,16 +47,27 @@ def load_all():
     df = df[df["price"] > 0]
     df = df[df["price"] <= df["price"].quantile(0.995)]
 
-    # Encoding maps (must match training order)
+    # Encoding maps (deterministic sort — matches prediction encoding)
     borough_map       = {v: i for i, v in enumerate(sorted(df["neighbourhood_group"].unique()))}
     neighbourhood_map = {v: i for i, v in enumerate(sorted(df["neighbourhood"].unique()))}
     room_map          = {v: i for i, v in enumerate(sorted(df["room_type"].unique()))}
 
+    df["borough_enc"]       = df["neighbourhood_group"].map(borough_map)
+    df["neighbourhood_enc"] = df["neighbourhood"].map(neighbourhood_map)
+    df["room_enc"]          = df["room_type"].map(room_map)
+
     neighbourhood_coords = df.groupby("neighbourhood")[["latitude", "longitude"]].mean()
     neighbourhood_prices = df.groupby("neighbourhood")["price"].median().round(0)
 
-    # Load pre-trained sklearn model (GradientBoostingRegressor, no xgboost / CUDA needed)
-    model = joblib.load("model.pkl")
+    # Train GBR directly from data — avoids pickle/numpy version issues
+    df_train = df.dropna(subset=FEATURES)
+    X = df_train[FEATURES].values.astype(np.float32)
+    y = df_train["price"].values.astype(np.float32)
+    model = GradientBoostingRegressor(
+        n_estimators=100, max_depth=4, learning_rate=0.1,
+        subsample=0.8, random_state=42
+    )
+    model.fit(X, y)
 
     return (
         model,
@@ -100,7 +111,7 @@ st.markdown("""
 st.markdown("<h1 style='text-align: center;'>🏙️ NYC Airbnb Price Predictor</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #555;'>Enter your listing details and check-in date, then click <strong>Predict Price</strong> to get an estimated nightly rate based on current NYC Airbnb listings (June 2026).</p>", unsafe_allow_html=True)
 
-with st.spinner("Loading model…"):
+with st.spinner("Loading model — first visit trains on ~21K listings, ~20s…"):
     (
         model,
         borough_map, neighbourhood_map, room_map,
