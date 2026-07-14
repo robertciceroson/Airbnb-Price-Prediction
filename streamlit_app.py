@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import GradientBoostingRegressor
+import lightgbm as lgb
 import plotly.express as px
 import datetime
 
@@ -63,9 +63,9 @@ def load_all():
     df_train = df.dropna(subset=FEATURES)
     X = df_train[FEATURES].values.astype(np.float32)
     y = df_train["price"].values.astype(np.float32)
-    model = GradientBoostingRegressor(
+    model = lgb.LGBMRegressor(
         n_estimators=100, max_depth=4, learning_rate=0.1,
-        subsample=0.8, random_state=42
+        subsample=0.8, random_state=42, n_jobs=1, verbose=-1
     )
     model.fit(X, y)
 
@@ -309,8 +309,8 @@ else:
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.divider()
 st.caption(
-    "GradientBoosting model trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
-    "Served via scikit-learn · "
+    "LightGBM model trained on current NYC Airbnb listings (June 2026 — Inside Airbnb) · "
+    "Served via LightGBM · "
     "Seasonal adjustments based on NYC tourism patterns · "
     "[GitHub repo](https://github.com/robertciceroson/Airbnb-Price-Prediction)"
 )
