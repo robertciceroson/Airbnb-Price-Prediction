@@ -115,7 +115,7 @@ Trained model, scaler, and feature names saved to `models/` using `joblib`:
 ### 10. Interactive Price Predictor
 Input a listing's details (location, room type, borough, availability, reviews) and get a predicted nightly price with a confidence range.
 
-**[▶ Live Demo — predict NYC Airbnb prices interactively](https://airbnb-price-prediction-a9hyny92wfihme4mnzkzte.streamlit.app/)**
+**[▶ Live Demo — predict NYC Airbnb prices interactively](https://airbnb-price-prediction-by5k7fkxjazxt2vsddtss5.streamlit.app/)**
 
 ### 11. NYC Price Heatmap
 An interactive map of New York City visualizing the model's learned pricing logic geographically. Each neighbourhood is represented as a color-coded dot — green for lower median prices, red for higher — with dot size proportional to the number of listings in that area.
