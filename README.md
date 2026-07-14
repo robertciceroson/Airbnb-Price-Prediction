@@ -126,7 +126,7 @@ Key features:
 - **Summary tables** — 10 most affordable and 10 most expensive neighbourhoods ranked side by side
 - Built with Plotly `scatter_mapbox` on a `carto-positron` basemap (no API key required)
 
-**[▶ Live Demo — explore NYC price map](https://airbnb-price-prediction-a9hyny92wfihme4mnzkzte.streamlit.app/)**
+**airbnb-price-prediction-by5k7fkxjazxt2vsddtss5.streamlit.app**
 
 ---
 
