@@ -225,16 +225,20 @@ if predict:
         )
  
     with st.expander("📊 What drives the prediction?"):
-        import matplotlib.pyplot as plt 
-        importance = model.feature_importances_
-        labels     = ["Borough", "Neighbourhood", "Room type", "Latitude", "Longitude",
-                      "Min nights", "# Reviews", "Reviews/month", "Host listings", "Availability"]
-        sorted_idx = np.argsort(importance)
-        fig, ax    = plt.subplots(figsize=(6, 4))
-        ax.barh([labels[i] for i in sorted_idx], importance[sorted_idx], color="#2E75B6")
-        ax.set_xlabel("Feature importance")
-        ax.set_title("XGBoost feature importances")
-        st.pyplot(fig)
+    importance = model.feature_importances_
+    labels = ["Borough", "Neighbourhood", "Room type", "Latitude", "Longitude",
+              "Min nights", "# Reviews", "Reviews/month", "Host listings", "Availability"]
+    sorted_idx = np.argsort(importance)
+    fig_imp = px.bar(
+        x=importance[sorted_idx],
+        y=[labels[i] for i in sorted_idx],
+        orientation='h',
+        labels={'x': 'Feature importance', 'y': ''},
+        title='XGBoost feature importances',
+        color_discrete_sequence=["#2E75B6"],
+    )
+    fig_imp.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
+    st.plotly_chart(fig_imp, use_container_width=True)
  
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 2 — Price Map
