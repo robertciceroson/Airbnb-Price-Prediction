@@ -183,7 +183,7 @@ if predict:
         float(reviews_per_month), float(host_listings), float(availability),
     ]], dtype=np.float32)
 
-    base_pred     = float(sess.run([output_name], {input_name: row})[0][0])
+    base_pred     = float(sess.run([output_name], {input_name: row})[0].flat[0])
     adjusted_pred = base_pred * seasonal_mult
     total_cost    = adjusted_pred * num_nights
 
