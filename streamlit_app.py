@@ -50,9 +50,13 @@ with col4:
 with col5:
     checkout = st.date_input("Check-out Date", value=today + datetime.timedelta(days=3))
 
-nights = max(1, (checkout - checkin).days)
+nights = (checkout - checkin).days
 
 st.button("Predict Price", type="primary")
+
+if nights <= 0:
+    st.error("Check-out date must be after check-in date.")
+    st.stop()
 
 base_price = neigh_room_median.get((neighbourhood, room_type), neighbourhood_prices.get(neighbourhood, global_median))
 month = checkin.month
