@@ -6,7 +6,7 @@ import datetime
 SEASONAL = {1:0.88,2:0.90,3:0.97,4:1.05,5:1.08,6:1.18,7:1.22,8:1.20,9:1.07,10:1.05,11:0.95,12:1.02}
 SEASON_LABEL = {1:"Off-season",2:"Off-season",3:"Shoulder",4:"Spring",5:"Spring peak",6:"Summer peak",7:"Summer peak",8:"Summer peak",9:"Fall shoulder",10:"Fall shoulder",11:"Off-season",12:"Holiday"}
 
-st.set_page_config(page_title="NYC Airbnb Price Predictor", page_icon="🏙", layout="wide")
+st.set_page_config(page_title="NYC Airbnb Price Predictor", layout="wide")
 
 @st.cache_resource(show_spinner=False)
 def load_all():
@@ -44,10 +44,13 @@ with col3:
     room_type = st.selectbox("Room Type", room_types)
 
 col4, col5 = st.columns(2)
+today = datetime.date.today()
 with col4:
-    checkin = st.date_input("Check-in Date", value=datetime.date.today())
+    checkin = st.date_input("Check-in Date", value=today)
 with col5:
-    nights = st.number_input("Number of Nights", min_value=1, max_value=30, value=3)
+    checkout = st.date_input("Check-out Date", value=today + datetime.timedelta(days=3))
+
+nights = max(1, (checkout - checkin).days)
 
 base_price = neigh_room_median.get((neighbourhood, room_type), neighbourhood_prices.get(neighbourhood, global_median))
 month = checkin.month
